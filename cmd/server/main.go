@@ -4,7 +4,7 @@ import (
 	"log"
 	"net"
 
-	"github.com/arunvm/chat_app/chat"
+	"github.com/arunvm/chat_app/chat/server"
 )
 
 func main() {
@@ -15,7 +15,7 @@ func main() {
 
 	log.Println("Server starting")
 
-	c := chat.New()
+	c := server.New()
 	for {
 		conn, err := l.Accept()
 		if err != nil {
