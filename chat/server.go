@@ -10,13 +10,15 @@ import (
 
 // Store keeps track of connected users
 type Store struct {
-	Mutex *sync.Mutex
+	Mutex sync.Mutex
 	Users map[string]*net.Conn
 }
 
 // New returns an instance of store
 func New() *Store {
-	s := &Store{}
+	s := &Store{
+		Users: make(map[string]*net.Conn),
+	}
 	return s
 }
 
@@ -38,7 +40,7 @@ func (s *Store) Handle(conn *net.Conn) {
 		}
 		switch {
 		case strings.HasPrefix(data, "/connect:::"):
-			name := strings.Trim(data, "/connect:::")
+			name := strings.TrimSuffix(strings.Trim(data, "/connect:::"), "\n")
 			s.connect(name, conn)
 		}
 	}
