@@ -39,8 +39,8 @@ func (s *Store) Handle(conn *net.Conn) {
 			log.Fatalf("Error reading from connection, Error %v", err)
 		}
 		switch {
-		case strings.HasPrefix(data, "/connect:::"):
-			name := strings.TrimSuffix(strings.Trim(data, "/connect:::"), "\n")
+		case strings.HasPrefix(data, "/connect>"):
+			name := strings.TrimSuffix(strings.Trim(data, "/connect>"), "\n")
 			s.connect(name, conn)
 		}
 	}

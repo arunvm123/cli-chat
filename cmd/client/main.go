@@ -13,7 +13,7 @@ func main() {
 		panic(err)
 	}
 
-	message := fmt.Sprintln("/connect:::John")
+	message := fmt.Sprintln("/connect>John")
 
 	conn.Write([]byte(message))
 	<-time.After(time.Second * 15)
