@@ -25,5 +25,8 @@ func main() {
 		panic(err)
 	}
 	fmt.Println(string(b))
+
+	message = fmt.Sprintln("/disconnect>John")
+	conn.Write([]byte(message))
 	<-time.After(time.Second * 15)
 }

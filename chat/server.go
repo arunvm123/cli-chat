@@ -27,6 +27,7 @@ func (s *Store) connect(name string, conn *net.Conn) {
 	s.Mutex.Lock()
 	s.Users[name] = conn
 	s.Mutex.Unlock()
+	log.Println(s.Users)
 }
 
 // Handle handles all incoming messages
@@ -45,6 +46,9 @@ func (s *Store) Handle(conn *net.Conn) {
 		case strings.HasPrefix(data, "/message>"):
 			message := strings.Trim(data, "/message>")
 			s.broadcast(message)
+		case strings.HasPrefix(data, "/disconnect>"):
+			name := strings.TrimSuffix(strings.Trim(data, "/disconnect>"), "\n")
+			s.disconnect(name)
 		}
 	}
 }
@@ -72,4 +76,5 @@ func (s *Store) disconnect(name string) {
 	s.Mutex.Lock()
 	delete(s.Users, name)
 	s.Mutex.Unlock()
+	log.Println(s.Users)
 }
