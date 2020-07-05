@@ -42,6 +42,9 @@ func (s *Store) Handle(conn *net.Conn) {
 		case strings.HasPrefix(data, "/connect>"):
 			name := strings.TrimSuffix(strings.Trim(data, "/connect>"), "\n")
 			s.connect(name, conn)
+		case strings.HasPrefix(data, "/message>"):
+			message := strings.Trim(data, "/message>")
+			s.broadcast(message)
 		}
 	}
 }
