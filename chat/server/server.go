@@ -43,6 +43,7 @@ func (s *Store) Handle(conn *net.Conn) {
 		case strings.HasPrefix(data, "/connect>"):
 			name := strings.TrimSuffix(strings.Trim(data, "/connect>"), "\n")
 			s.connect(name, conn)
+			s.broadcast("/users>" + strings.Join(s.getUserList(), " ") + "\n")
 		case strings.HasPrefix(data, "/message>"):
 			log.Println(data)
 			message := strings.Trim(data, "/message>")
@@ -79,4 +80,16 @@ func (s *Store) disconnect(name string) {
 	delete(s.Users, name)
 	s.Mutex.Unlock()
 	log.Println(s.Users)
+}
+
+func (s *Store) getUserList() []string {
+	var users []string
+
+	s.Mutex.Lock()
+	for user := range s.Users {
+		users = append(users, user)
+	}
+	s.Mutex.Unlock()
+
+	return users
 }

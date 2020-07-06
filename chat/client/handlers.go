@@ -34,6 +34,10 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 		if err != nil {
 			log.Fatalf("Error retrieving message view, Error: %v", err)
 		}
+		usersView, err := g.View("users")
+		if err != nil {
+			log.Fatalf("Error retrieving users view, Error: %v", err)
+		}
 
 		reader := bufio.NewReader(conn)
 
@@ -41,6 +45,15 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 			data, _ := reader.ReadString('\n')
 			msg := strings.TrimSpace(data)
 			switch {
+			case strings.HasPrefix(msg, "/users>"):
+				splitUsers := strings.Split(strings.SplitAfter(msg, ">")[1], " ")
+				users := strings.Join(splitUsers, "\n")
+				g.Update(func(g *gocui.Gui) error {
+					usersView.Title = fmt.Sprintf(" %d users: ", len(splitUsers))
+					usersView.Clear()
+					fmt.Fprintln(usersView, users)
+					return nil
+				})
 			default:
 				g.Update(func(g *gocui.Gui) error {
 					fmt.Fprintln(messageView, msg)
