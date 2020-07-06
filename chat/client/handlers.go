@@ -10,7 +10,9 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-func Quit(g *gocui.Gui, v *gocui.View) error {
+func (chatClient *Client) Quit(g *gocui.Gui, v *gocui.View) error {
+	message := fmt.Sprintf("/disconnect>" + chatClient.Name)
+	chatClient.Conn.Write([]byte(message))
 	return gocui.ErrQuit
 }
 

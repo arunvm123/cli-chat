@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"net"
 	"strings"
@@ -37,6 +38,9 @@ func (s *Store) Handle(conn *net.Conn) {
 	for {
 		data, err := reader.ReadString('\n')
 		if err != nil {
+			if err == io.EOF {
+				break
+			}
 			log.Fatalf("Error reading from connection, Error %v", err)
 		}
 		switch {
@@ -51,6 +55,8 @@ func (s *Store) Handle(conn *net.Conn) {
 		case strings.HasPrefix(data, "/disconnect>"):
 			name := strings.TrimSuffix(strings.Trim(data, "/disconnect>"), "\n")
 			s.disconnect(name)
+			s.broadcast("/users>" + strings.Join(s.getUserList(), " ") + "\n")
+			break
 		}
 	}
 }

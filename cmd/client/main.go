@@ -27,7 +27,7 @@ func main() {
 
 	g.SetKeybinding("name", gocui.KeyEnter, gocui.ModNone, chatClient.Update)
 	g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, chatClient.Send)
-	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, client.Quit)
+	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, chatClient.Quit)
 
 	g.MainLoop()
 }
