@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 
@@ -10,15 +8,14 @@ import (
 	"github.com/jroimartin/gocui"
 )
 
-var conn net.Conn
-
 func main() {
-
 	var err error
-	conn, err = net.Dial("tcp", ":8888")
+	conn, err := net.Dial("tcp", ":8888")
 	if err != nil {
 		panic(err)
 	}
+
+	chatClient := client.New(conn)
 
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
@@ -28,35 +25,11 @@ func main() {
 
 	g.SetManagerFunc(client.Layout)
 
-	g.SetKeybinding("name", gocui.KeyEnter, gocui.ModNone, update)
-	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit)
+	g.SetKeybinding("name", gocui.KeyEnter, gocui.ModNone, chatClient.Update)
+	g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, chatClient.Send)
+	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, client.Quit)
 
 	g.MainLoop()
-}
-
-func quit(g *gocui.Gui, v *gocui.View) error {
-	return gocui.ErrQuit
-}
-
-func update(g *gocui.Gui, v *gocui.View) error {
-	b, err := ioutil.ReadAll(v)
-	if err != nil {
-		log.Fatalf("Error reading name, Error %v", err)
-	}
-
-	message := fmt.Sprintln("/connect>" + string(b))
-	_, err = conn.Write([]byte(message))
-	if err != nil {
-		log.Fatalf("Error connecting to chat room, Error %v", err)
-	}
-
-	// Some UI changes
-	g.SetViewOnTop("messages")
-	g.SetViewOnTop("users")
-	g.SetViewOnTop("input")
-	g.SetCurrentView("input")
-
-	return nil
 }
 
 // func main() {

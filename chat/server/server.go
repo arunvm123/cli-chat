@@ -44,6 +44,7 @@ func (s *Store) Handle(conn *net.Conn) {
 			name := strings.TrimSuffix(strings.Trim(data, "/connect>"), "\n")
 			s.connect(name, conn)
 		case strings.HasPrefix(data, "/message>"):
+			log.Println(data)
 			message := strings.Trim(data, "/message>")
 			s.broadcast(message)
 		case strings.HasPrefix(data, "/disconnect>"):
@@ -55,6 +56,7 @@ func (s *Store) Handle(conn *net.Conn) {
 
 // Broadcast sends the message to all the clients
 func (s *Store) broadcast(message string) error {
+	log.Println(message)
 	s.Mutex.Lock()
 	for name, c := range s.Users {
 		writer := bufio.NewWriter(*c)
