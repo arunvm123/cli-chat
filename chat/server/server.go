@@ -2,11 +2,14 @@ package server
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/arunvm/chat_app/chat"
 )
 
 // Store keeps track of connected users
@@ -44,18 +47,18 @@ func (s *Store) Handle(conn *net.Conn) {
 			log.Fatalf("Error reading from connection, Error %v", err)
 		}
 		switch {
-		case strings.HasPrefix(data, "/connect>"):
-			name := strings.TrimSuffix(strings.Trim(data, "/connect>"), "\n")
+		case strings.HasPrefix(data, chat.Connect):
+			name := strings.TrimSuffix(strings.Trim(data, chat.Connect), "\n")
 			s.connect(name, conn)
-			s.broadcast("/users>" + strings.Join(s.getUserList(), " ") + "\n")
-		case strings.HasPrefix(data, "/message>"):
+			s.broadcast(fmt.Sprintf(chat.UserListFormat, strings.Join(s.getUserList(), " ")))
+		case strings.HasPrefix(data, chat.Message):
 			log.Println(data)
-			message := strings.Trim(data, "/message>")
+			message := strings.Trim(data, chat.Message)
 			s.broadcast(message)
-		case strings.HasPrefix(data, "/disconnect>"):
-			name := strings.TrimSuffix(strings.Trim(data, "/disconnect>"), "\n")
+		case strings.HasPrefix(data, chat.Disconnect):
+			name := strings.TrimSuffix(strings.Trim(data, chat.Disconnect), "\n")
 			s.disconnect(name)
-			s.broadcast("/users>" + strings.Join(s.getUserList(), " ") + "\n")
+			s.broadcast(fmt.Sprintf(chat.UserListFormat, strings.Join(s.getUserList(), " ")))
 			break
 		}
 	}
