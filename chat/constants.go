@@ -1,16 +1,9 @@
 package chat
 
-// Command formats
+// Message Type
 const (
-	Connect    = "/connect>"
-	Message    = "/message>"
-	Disconnect = "/disconnect>"
-	Users      = "/users>"
-)
-
-// Message Formats
-const (
-	UserListFormat = Users + "%s\n"
+	UserList         = 1
+	BroadcastMessage = 2
 )
 
 // View names

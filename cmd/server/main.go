@@ -4,7 +4,9 @@ import (
 	"log"
 	"net"
 
+	"github.com/arunvm/chat_app/chat"
 	"github.com/arunvm/chat_app/chat/server"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -15,13 +17,7 @@ func main() {
 
 	log.Println("Server starting")
 
-	c := server.New()
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			log.Fatalf("Error when accepting a connection, Error: %v", err)
-		}
-
-		go c.Handle(&conn)
-	}
+	s := grpc.NewServer()
+	chat.RegisterBroadcastServer(s, server.New())
+	log.Fatal(s.Serve(l))
 }

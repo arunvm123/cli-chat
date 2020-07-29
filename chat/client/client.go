@@ -1,13 +1,15 @@
 package client
 
-import "net"
+import (
+	"github.com/arunvm/chat_app/chat"
+)
 
 type Client struct {
-	Conn net.Conn
+	Conn chat.BroadcastClient
 	Name string
 }
 
-func New(conn net.Conn) *Client {
+func New(conn chat.BroadcastClient) *Client {
 	return &Client{
 		Conn: conn,
 	}

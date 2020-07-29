@@ -2,20 +2,23 @@ package main
 
 import (
 	"log"
-	"net"
 
+	"github.com/arunvm/chat_app/chat"
 	"github.com/arunvm/chat_app/chat/client"
 	"github.com/jroimartin/gocui"
+	"google.golang.org/grpc"
 )
 
 func main() {
 	var err error
-	conn, err := net.Dial("tcp", ":8888")
+	conn, err := grpc.Dial(":8888", grpc.WithInsecure())
 	if err != nil {
-		panic(err)
+		log.Fatalf("Error connecting to server, Error=%v", err)
 	}
+	defer conn.Close()
+	broadcastClient := chat.NewBroadcastClient(conn)
 
-	chatClient := client.New(conn)
+	chatClient := client.New(broadcastClient)
 
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {

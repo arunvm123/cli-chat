@@ -1,11 +1,8 @@
 package server
 
 import (
-	"bufio"
-	"fmt"
-	"io"
+	"context"
 	"log"
-	"net"
 	"strings"
 	"sync"
 
@@ -15,80 +12,59 @@ import (
 // Store keeps track of connected users
 type Store struct {
 	Mutex sync.Mutex
-	Users map[string]*net.Conn
+	Users map[string]connection
+}
+
+type connection struct {
+	stream chat.Broadcast_ConnectServer
+	err    chan error
 }
 
 // New returns an instance of store
 func New() *Store {
 	s := &Store{
-		Users: make(map[string]*net.Conn),
+		Users: make(map[string]connection),
 	}
 	return s
 }
 
-// Connect adds a new user and their connection to the store
-func (s *Store) connect(name string, conn *net.Conn) {
+func (s *Store) Connect(user *chat.User, stream chat.Broadcast_ConnectServer) error {
 	s.Mutex.Lock()
-	s.Users[name] = conn
-	s.Mutex.Unlock()
-	log.Println(s.Users)
-}
-
-// Handle handles all incoming messages
-func (s *Store) Handle(conn *net.Conn) {
-	reader := bufio.NewReader(*conn)
-
-	for {
-		data, err := reader.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Fatalf("Error reading from connection, Error %v", err)
-		}
-		switch {
-		case strings.HasPrefix(data, chat.Connect):
-			name := strings.TrimSuffix(strings.Trim(data, chat.Connect), "\n")
-			s.connect(name, conn)
-			s.broadcast(fmt.Sprintf(chat.UserListFormat, strings.Join(s.getUserList(), " ")))
-		case strings.HasPrefix(data, chat.Message):
-			log.Println(data)
-			message := strings.Trim(data, chat.Message)
-			s.broadcast(message)
-		case strings.HasPrefix(data, chat.Disconnect):
-			name := strings.TrimSuffix(strings.Trim(data, chat.Disconnect), "\n")
-			s.disconnect(name)
-			s.broadcast(fmt.Sprintf(chat.UserListFormat, strings.Join(s.getUserList(), " ")))
-			break
-		}
+	s.Users[user.GetName()] = connection{
+		stream: stream,
+		err:    make(chan error),
 	}
-}
+	s.Mutex.Unlock()
 
-// Broadcast sends the message to all the clients
-func (s *Store) broadcast(message string) error {
-	log.Println(message)
-	s.Mutex.Lock()
-	for name, c := range s.Users {
-		writer := bufio.NewWriter(*c)
-		_, err := writer.Write([]byte(message))
-		if err != nil {
-			log.Printf("Error writing to user %v, Error: %v", name, err)
-			delete(s.Users, name)
-		}
-
-		writer.Flush()
+	err := s.broadcastOnlineUsers()
+	if err != nil {
+		log.Printf("Error when broadcasting users,Error=%v", err)
+		s.Users[user.GetName()].err <- err
 	}
 
-	s.Mutex.Unlock()
-	return nil
+	return <-s.Users[user.GetName()].err
 }
 
-// Disconnect removes the user and connection from the store
-func (s *Store) disconnect(name string) {
+func (s *Store) BroadcastMessage(ctx context.Context, message *chat.Message) (*chat.Empty, error) {
 	s.Mutex.Lock()
-	delete(s.Users, name)
+	for _, user := range s.Users {
+		err := user.stream.Send(message)
+		if err != nil {
+			log.Fatalf("Error when sending message, Error=%v", err)
+		}
+	}
 	s.Mutex.Unlock()
-	log.Println(s.Users)
+
+	return &chat.Empty{}, nil
+}
+
+func (s *Store) Disconnect(ctx context.Context, user *chat.User) (*chat.Empty, error) {
+	s.Mutex.Lock()
+	delete(s.Users, user.GetName())
+	s.Mutex.Unlock()
+
+	s.broadcastOnlineUsers()
+	return &chat.Empty{}, nil
 }
 
 func (s *Store) getUserList() []string {
@@ -101,4 +77,19 @@ func (s *Store) getUserList() []string {
 	s.Mutex.Unlock()
 
 	return users
+}
+
+func (s *Store) broadcastOnlineUsers() error {
+	message := &chat.Message{
+		Type:    chat.UserList,
+		Message: strings.Join(s.getUserList(), " "),
+	}
+
+	_, err := s.BroadcastMessage(context.Background(), message)
+	if err != nil {
+		log.Printf("Error broadcasting online users,Error=%v", err)
+		return err
+	}
+
+	return nil
 }

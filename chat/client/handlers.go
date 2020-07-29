@@ -1,10 +1,9 @@
 package client
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"log"
-	"net"
 	"strings"
 
 	"github.com/arunvm/chat_app/chat"
@@ -12,17 +11,15 @@ import (
 )
 
 func (chatClient *Client) Quit(g *gocui.Gui, v *gocui.View) error {
-	message := fmt.Sprintf(chat.Disconnect + chatClient.Name)
-	chatClient.Conn.Write([]byte(message))
+	chatClient.Conn.Disconnect(context.Background(), &chat.User{Name: chatClient.Name})
 	return gocui.ErrQuit
 }
 
 func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 
-	chatClient.Name = v.Buffer()
+	chatClient.Name = strings.TrimSpace(v.Buffer())
 
-	message := fmt.Sprintln(chat.Connect + chatClient.Name)
-	_, err := chatClient.Conn.Write([]byte(message))
+	stream, err := chatClient.Conn.Connect(context.Background(), &chat.User{Name: chatClient.Name})
 	if err != nil {
 		log.Fatalf("Error connecting to chat room, Error %v", err)
 	}
@@ -32,7 +29,7 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 	g.SetViewOnTop(chat.UsersView)
 	g.SetViewOnTop(chat.InputView)
 	g.SetCurrentView(chat.InputView)
-	go func(conn net.Conn, g *gocui.Gui) {
+	go func(s chat.Broadcast_ConnectClient, conn chat.BroadcastClient, g *gocui.Gui) {
 		messageView, err := g.View("messages")
 		if err != nil {
 			log.Fatalf("Error retrieving message view, Error: %v", err)
@@ -42,14 +39,15 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 			log.Fatalf("Error retrieving users view, Error: %v", err)
 		}
 
-		reader := bufio.NewReader(conn)
-
 		for {
-			data, _ := reader.ReadString('\n')
-			msg := strings.TrimSpace(data)
-			switch {
-			case strings.HasPrefix(msg, chat.Users):
-				splitUsers := strings.Split(strings.SplitAfter(msg, ">")[1], " ")
+			msg, err := s.Recv()
+			if err != nil {
+				log.Printf("Error while reading message,Error=%v", err)
+				return
+			}
+			switch msg.Type {
+			case chat.UserList:
+				splitUsers := strings.Split(msg.GetMessage(), " ")
 				users := strings.Join(splitUsers, "\n")
 				g.Update(func(g *gocui.Gui) error {
 					usersView.Title = fmt.Sprintf(" %d users: ", len(splitUsers))
@@ -57,22 +55,22 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 					fmt.Fprintln(usersView, users)
 					return nil
 				})
-			default:
+			case chat.BroadcastMessage:
 				g.Update(func(g *gocui.Gui) error {
-					fmt.Fprintln(messageView, msg)
+					fmt.Fprint(messageView, msg.Message)
 					return nil
 				})
 			}
 		}
-	}(chatClient.Conn, g)
+	}(stream, chatClient.Conn, g)
 
 	return nil
 
 }
 
 func (chatClient *Client) Send(g *gocui.Gui, v *gocui.View) error {
-	message := fmt.Sprintln(chat.Message + strings.TrimSpace(chatClient.Name) + ":" + v.Buffer())
-	_, err := chatClient.Conn.Write([]byte(message))
+	message := fmt.Sprint(strings.TrimSpace(chatClient.Name) + ":" + v.Buffer())
+	_, err := chatClient.Conn.BroadcastMessage(context.Background(), &chat.Message{Message: message, Type: chat.BroadcastMessage})
 	if err != nil {
 		log.Fatalf("Error connecting to chat room, Error %v", err)
 	}
