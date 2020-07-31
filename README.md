@@ -1,4 +1,4 @@
-#cli-chat
+# cli-chat
 
     This is a project I build to learn a bit about grpc. I was planning to build a chat room where the client communicated with the server via grpc and was looking at some cli based UI in Golang to implement the client with. Thats when I came across this [repo](https://github.com/Luqqk/go-cli-chat). The UI was exactly what I had in mind, so I decided to use it but with a grpc implementation.
 
