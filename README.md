@@ -8,14 +8,14 @@
 
   Run the server first
 
-    ```
-    go run cmd/server/main.go
-    ```
+  ```
+  go run cmd/server/main.go
+  ```
 
   and then the client
 
-    ```
-    go run cmd/client/main.go
-    ```
+  ```
+  go run cmd/client/main.go
+  ```
 
   and it should be working
