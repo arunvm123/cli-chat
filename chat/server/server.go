@@ -28,6 +28,7 @@ func New() *Store {
 	return s
 }
 
+// Connect opens a new stream with the client and closes it when the function returns an error or nil
 func (s *Store) Connect(user *chat.User, stream chat.Broadcast_ConnectServer) error {
 	s.Mutex.Lock()
 	s.Users[user.GetName()] = connection{
@@ -36,21 +37,21 @@ func (s *Store) Connect(user *chat.User, stream chat.Broadcast_ConnectServer) er
 	}
 	s.Mutex.Unlock()
 
-	err := s.broadcastOnlineUsers()
-	if err != nil {
-		log.Printf("Error when broadcasting users,Error=%v", err)
-		s.Users[user.GetName()].err <- err
-	}
+	s.broadcastOnlineUsers()
 
-	return <-s.Users[user.GetName()].err
+	var done chan error
+	go s.errorHandler(user.GetName(), done)
+
+	return <-done
 }
 
 func (s *Store) BroadcastMessage(ctx context.Context, message *chat.Message) (*chat.Empty, error) {
 	s.Mutex.Lock()
-	for _, user := range s.Users {
+	for name, user := range s.Users {
 		err := user.stream.Send(message)
 		if err != nil {
-			log.Fatalf("Error when sending message, Error=%v", err)
+			log.Printf("Error when sending message, Error=%v", err)
+			s.Users[name].err <- err
 		}
 	}
 	s.Mutex.Unlock()
@@ -59,9 +60,7 @@ func (s *Store) BroadcastMessage(ctx context.Context, message *chat.Message) (*c
 }
 
 func (s *Store) Disconnect(ctx context.Context, user *chat.User) (*chat.Empty, error) {
-	s.Mutex.Lock()
-	delete(s.Users, user.GetName())
-	s.Mutex.Unlock()
+	s.disconnect(user.GetName())
 
 	s.broadcastOnlineUsers()
 	return &chat.Empty{}, nil
@@ -79,17 +78,32 @@ func (s *Store) getUserList() []string {
 	return users
 }
 
-func (s *Store) broadcastOnlineUsers() error {
+func (s *Store) broadcastOnlineUsers() {
 	message := &chat.Message{
 		Type:    chat.UserList,
 		Message: strings.Join(s.getUserList(), " "),
 	}
 
-	_, err := s.BroadcastMessage(context.Background(), message)
-	if err != nil {
-		log.Printf("Error broadcasting online users,Error=%v", err)
-		return err
-	}
+	s.BroadcastMessage(context.Background(), message)
 
-	return nil
+	return
+}
+
+func (s *Store) disconnect(name string) {
+	s.Mutex.Lock()
+	delete(s.Users, name)
+	s.Mutex.Unlock()
+	return
+}
+
+// This function handles all the thing that needs to be taken care of when a user
+// exits the client or when an error occurs. This function does the following:
+// - Closes the grpc stream by passing error/nil to the Connect function
+// - Removes the user from the map
+// - Retrieves the new list of users and broadcasts to all users that have the stream open
+func (s *Store) errorHandler(name string, done chan error) {
+	done <- <-s.Users[name].err
+	s.disconnect(name)
+	s.broadcastOnlineUsers()
+	return
 }
