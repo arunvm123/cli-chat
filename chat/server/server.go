@@ -39,10 +39,15 @@ func (s *Store) Connect(user *chat.User, stream chat.Broadcast_ConnectServer) er
 
 	s.broadcastOnlineUsers()
 
-	done := make(chan error)
-	go s.errorHandler(user.GetName(), done)
+	// Steps to do before returning from connect function
+	// - Closes the grpc stream by passing error/nil to the Connect function
+	// - Removes the user from the map
+	// - Retrieves the new list of users and broadcasts to all users that have the stream open
+	err := <-s.Users[user.GetName()].err
+	s.disconnect(user.GetName())
+	s.broadcastOnlineUsers()
 
-	return <-done
+	return err
 }
 
 func (s *Store) BroadcastMessage(ctx context.Context, message *chat.Message) (*chat.Empty, error) {
@@ -91,17 +96,5 @@ func (s *Store) disconnect(name string) {
 	s.Mutex.Lock()
 	delete(s.Users, name)
 	s.Mutex.Unlock()
-	return
-}
-
-// This function handles all the things that needs to be taken care of when a user
-// exits the client or when an error occurs. This function does the following:
-// - Closes the grpc stream by passing error/nil to the Connect function
-// - Removes the user from the map
-// - Retrieves the new list of users and broadcasts to all users that have the stream open
-func (s *Store) errorHandler(name string, done chan error) {
-	done <- <-s.Users[name].err
-	s.disconnect(name)
-	s.broadcastOnlineUsers()
 	return
 }

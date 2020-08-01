@@ -41,7 +41,7 @@ func Layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		g.SetCurrentView("name")
+		g.SetCurrentView(chat.NameView)
 		name.Title = " name: "
 		name.Autoscroll = false
 		name.Wrap = true

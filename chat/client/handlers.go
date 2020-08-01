@@ -30,11 +30,11 @@ func (chatClient *Client) Update(g *gocui.Gui, v *gocui.View) error {
 	g.SetViewOnTop(chat.InputView)
 	g.SetCurrentView(chat.InputView)
 	go func(s chat.Broadcast_ConnectClient, conn chat.BroadcastClient, g *gocui.Gui) {
-		messageView, err := g.View("messages")
+		messageView, err := g.View(chat.MessageView)
 		if err != nil {
 			log.Fatalf("Error retrieving message view, Error: %v", err)
 		}
-		usersView, err := g.View("users")
+		usersView, err := g.View(chat.UsersView)
 		if err != nil {
 			log.Fatalf("Error retrieving users view, Error: %v", err)
 		}
