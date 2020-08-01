@@ -1,5 +1,7 @@
 package chat
 
+//go:generate protoc --go_out=plugins=grpc:. chat.proto
+
 // Message Type
 const (
 	UserList         = 1
